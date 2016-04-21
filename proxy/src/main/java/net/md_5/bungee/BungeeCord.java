@@ -159,7 +159,8 @@ public class BungeeCord extends ProxyServer
     {
         // TODO: Proper fallback when we interface the manager
         getPluginManager().registerCommand( null, new CommandReload() );
-        getPluginManager().registerCommand( null, new CommandEnd() );
+        getPluginManager().registerCommand( null, new CommandEnd("end") );
+        getPluginManager().registerCommand( null, new CommandEnd("stop") );
         getPluginManager().registerCommand( null, new CommandIP() );
         getPluginManager().registerCommand( null, new CommandBungee() );
         getPluginManager().registerCommand( null, new CommandPerms() );

@@ -12,9 +12,9 @@ import net.md_5.bungee.api.plugin.Command;
 public class CommandEnd extends Command
 {
 
-    public CommandEnd()
+    public CommandEnd(String name)
     {
-        super( "end", "bungeecord.command.end" );
+        super( name, "bungeecord.command.end" );
     }
 
     @Override
