@@ -5,6 +5,12 @@ Layer 7 proxy designed to link Minecraft servers.
 
 BungeeCord is a sophisticated proxy and API designed mainly to teleport players between multiple Minecraft servers. It is the latest incarnation of similar software written by the author from 2011-present.
 
+Fork Details
+------------
+Forked to provide external interaction compatible with minecraft/spigot servers.
+- Logs moved to /logs/latest.log
+- The console shutdown action is now 'stop' instead of 'end'
+
 Information
 -----------
 BungeeCord is maintained by [SpigotMC](https://www.spigotmc.org/) and has it's own [discussion thread](https://www.spigotmc.org/go/bungeecord) with plenty of helpful information and links.
