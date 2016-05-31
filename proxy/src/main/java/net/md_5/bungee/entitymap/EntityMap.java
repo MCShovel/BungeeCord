@@ -31,6 +31,8 @@ public abstract class EntityMap
             case ProtocolConstants.MINECRAFT_1_9_1:
             case ProtocolConstants.MINECRAFT_1_9_2:
                 return EntityMap_1_9.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_9_4:
+                return EntityMap_1_9_4.INSTANCE;
         }
         throw new RuntimeException( "Version " + version + " has no entity map" );
     }
@@ -41,20 +43,17 @@ public abstract class EntityMap
         {
             if ( varint )
             {
-                clientboundVarInts[ id ] = true;
+                clientboundVarInts[id] = true;
             } else
             {
-                clientboundInts[ id ] = true;
+                clientboundInts[id] = true;
             }
+        } else if ( varint )
+        {
+            serverboundVarInts[id] = true;
         } else
         {
-            if ( varint )
-            {
-                serverboundVarInts[ id ] = true;
-            } else
-            {
-                serverboundInts[ id ] = true;
-            }
+            serverboundInts[id] = true;
         }
     }
 
@@ -104,10 +103,10 @@ public abstract class EntityMap
         int packetId = DefinedPacket.readVarInt( packet );
         int packetIdLength = packet.readerIndex() - readerIndex;
 
-        if ( ints[ packetId ] )
+        if ( ints[packetId] )
         {
             rewriteInt( packet, oldId, newId, readerIndex + packetIdLength );
-        } else if ( varints[ packetId ] )
+        } else if ( varints[packetId] )
         {
             rewriteVarInt( packet, oldId, newId, readerIndex + packetIdLength );
         }
