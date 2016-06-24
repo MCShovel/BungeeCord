@@ -253,6 +253,16 @@ public final class UserConnection implements ProxiedPlayer
     {
         Preconditions.checkNotNull( info, "info" );
 
+        if (!info.canAccess(this)) {
+            if ( callback != null )
+            {
+                callback.done( false, null );
+            }
+            
+        	disconnect(TextComponent.fromLegacyText(bungee.getTranslation( "no_server_permission" )));
+        	return;
+        }
+        
         ServerConnectEvent event = new ServerConnectEvent( this, info );
         if ( bungee.getPluginManager().callEvent( event ).isCancelled() )
         {
