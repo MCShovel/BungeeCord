@@ -7,7 +7,7 @@ import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import net.md_5.bungee.BungeeCord;
+import jline.console.ConsoleReader;
 
 public class BungeeLogger extends Logger
 {
@@ -20,9 +20,9 @@ public class BungeeLogger extends Logger
                 "CallToPrintStackTrace", "CallToThreadStartDuringObjectConstruction"
             })
     @SuppressFBWarnings("SC_START_IN_CTOR")
-    public BungeeLogger(BungeeCord bungee)
+    public BungeeLogger(String loggerName, String filePattern, ConsoleReader reader)
     {
-        super( "BungeeCord", null );
+        super( loggerName, null );
         setLevel( Level.ALL );
 
         try
@@ -31,7 +31,7 @@ public class BungeeLogger extends Logger
             fileHandler.setFormatter( formatter );
             addHandler( fileHandler );
 
-            ColouredWriter consoleHandler = new ColouredWriter( bungee.getConsoleReader() );
+            ColouredWriter consoleHandler = new ColouredWriter( reader );
             consoleHandler.setLevel( Level.INFO );
             consoleHandler.setFormatter( formatter );
             addHandler( consoleHandler );
@@ -40,6 +40,7 @@ public class BungeeLogger extends Logger
             System.err.println( "Could not register logger!" );
             ex.printStackTrace();
         }
+
         dispatcher.start();
     }
 
