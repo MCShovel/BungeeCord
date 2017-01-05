@@ -33,6 +33,7 @@ import net.md_5.bungee.protocol.PacketWrapper;
 import net.md_5.bungee.protocol.packet.BossBar;
 import net.md_5.bungee.protocol.packet.KeepAlive;
 import net.md_5.bungee.protocol.packet.PlayerListItem;
+import net.md_5.bungee.protocol.packet.Respawn;
 import net.md_5.bungee.protocol.packet.ScoreboardObjective;
 import net.md_5.bungee.protocol.packet.ScoreboardScore;
 import net.md_5.bungee.protocol.packet.ScoreboardDisplay;
@@ -59,8 +60,8 @@ public class DownstreamBridge extends PacketHandler
             return;
         }
 
-        ServerInfo def = bungee.getServerInfo( con.getPendingConnection().getListener().getFallbackServer() );
-        if ( server.getInfo() != def )
+        ServerInfo def = con.updateAndGetNextServer( server.getInfo() );
+        if ( def != null )
         {
             server.setObsolete( true );
             con.connectNow( def );
@@ -452,11 +453,7 @@ public class DownstreamBridge extends PacketHandler
     @Override
     public void handle(Kick kick) throws Exception
     {
-        ServerInfo def = bungee.getServerInfo( con.getPendingConnection().getListener().getFallbackServer() );
-        if ( Objects.equal( server.getInfo(), def ) )
-        {
-            def = null;
-        }
+        ServerInfo def = con.updateAndGetNextServer( server.getInfo() );
         ServerKickEvent event = bungee.getPluginManager().callEvent( new ServerKickEvent( con, server.getInfo(), ComponentSerializer.parse( kick.getMessage() ), def, ServerKickEvent.State.CONNECTED ) );
         if ( event.isCancelled() && event.getCancelServer() != null )
         {
@@ -502,6 +499,12 @@ public class DownstreamBridge extends PacketHandler
                 con.getSentBossBars().remove( bossBar.getUuid() );
                 break;
         }
+    }
+
+    @Override
+    public void handle(Respawn respawn)
+    {
+        con.setDimension( respawn.getDimension() );
     }
 
     @Override

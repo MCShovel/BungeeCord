@@ -13,7 +13,7 @@ Forked to provide external interaction compatible with minecraft/spigot servers.
 
 Information
 -----------
-BungeeCord is maintained by [SpigotMC](https://www.spigotmc.org/) and has it's own [discussion thread](https://www.spigotmc.org/go/bungeecord) with plenty of helpful information and links.
+BungeeCord is maintained by [SpigotMC](https://www.spigotmc.org/) and has its own [discussion thread](https://www.spigotmc.org/go/bungeecord) with plenty of helpful information and links.
 
 Source
 ------
