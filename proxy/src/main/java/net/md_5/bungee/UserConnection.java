@@ -27,6 +27,7 @@ import lombok.Setter;
 import net.md_5.bungee.api.Callback;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.SkinConfiguration;
 import net.md_5.bungee.api.Title;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -265,7 +266,7 @@ public final class UserConnection implements ProxiedPlayer
 
             if ( getServer() == null && !ch.isClosing() )
             {
-                throw new IllegalStateException("Cancelled ServerConnectEvent with no server or disconnect.");
+                throw new IllegalStateException( "Cancelled ServerConnectEvent with no server or disconnect." );
             }
             return;
         }
@@ -378,15 +379,7 @@ public final class UserConnection implements ProxiedPlayer
                 getName(), BaseComponent.toLegacyText( reason )
             } );
 
-            ch.delayedClose( new Runnable()
-            {
-
-                @Override
-                public void run()
-                {
-                    unsafe().sendPacket( new Kick( ComponentSerializer.toString( reason ) ) );
-                }
-            } );
+            ch.delayedClose( new Kick( ComponentSerializer.toString( reason ) ) );
 
             if ( server != null )
             {
@@ -438,8 +431,8 @@ public final class UserConnection implements ProxiedPlayer
     @Override
     public void sendMessage(ChatMessageType position, BaseComponent... message)
     {
-        // Action bar on 1.8 doesn't display the new JSON formattings, legacy works - send it using this for now
-        if ( position == ChatMessageType.ACTION_BAR && getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_8 )
+        // Action bar doesn't display the new JSON formattings, legacy works - send it using this for now
+        if ( position == ChatMessageType.ACTION_BAR )
         {
             sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
         } else
@@ -451,8 +444,8 @@ public final class UserConnection implements ProxiedPlayer
     @Override
     public void sendMessage(ChatMessageType position, BaseComponent message)
     {
-        // Action bar on 1.8 doesn't display the new JSON formattings, legacy works - send it using this for now
-        if ( position == ChatMessageType.ACTION_BAR && getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_8 )
+        // Action bar doesn't display the new JSON formattings, legacy works - send it using this for now
+        if ( position == ChatMessageType.ACTION_BAR )
         {
             sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
         } else
@@ -470,7 +463,7 @@ public final class UserConnection implements ProxiedPlayer
     @Override
     public InetSocketAddress getAddress()
     {
-        return (InetSocketAddress) ch.getHandle().remoteAddress();
+        return ch.getRemoteAddress();
     }
 
     @Override
@@ -566,6 +559,50 @@ public final class UserConnection implements ProxiedPlayer
     }
 
     @Override
+    public byte getViewDistance()
+    {
+        return ( settings != null ) ? settings.getViewDistance() : 10;
+    }
+
+    @Override
+    public ProxiedPlayer.ChatMode getChatMode()
+    {
+        if ( settings == null )
+        {
+            return ProxiedPlayer.ChatMode.SHOWN;
+        }
+
+        switch ( settings.getChatFlags() )
+        {
+            default:
+            case 0:
+                return ProxiedPlayer.ChatMode.SHOWN;
+            case 1:
+                return ProxiedPlayer.ChatMode.COMMANDS_ONLY;
+            case 2:
+                return ProxiedPlayer.ChatMode.HIDDEN;
+        }
+    }
+
+    @Override
+    public boolean hasChatColors()
+    {
+        return settings == null || settings.isChatColours();
+    }
+
+    @Override
+    public SkinConfiguration getSkinParts()
+    {
+        return ( settings != null ) ? new PlayerSkinConfiguration( settings.getSkinParts() ) : PlayerSkinConfiguration.SKIN_SHOW_ALL;
+    }
+
+    @Override
+    public ProxiedPlayer.MainHand getMainHand()
+    {
+        return ( settings == null || settings.getMainHand() == 1 ) ? ProxiedPlayer.MainHand.RIGHT : ProxiedPlayer.MainHand.LEFT;
+    }
+
+    @Override
     public boolean isForgeUser()
     {
         return forgeClientHandler.isForgeUser();
@@ -624,7 +661,7 @@ public final class UserConnection implements ProxiedPlayer
 
     public void setCompressionThreshold(int compressionThreshold)
     {
-        if ( ch.getHandle().isActive() && this.compressionThreshold == -1 && compressionThreshold >= 0 )
+        if ( !ch.isClosing() && this.compressionThreshold == -1 && compressionThreshold >= 0 )
         {
             this.compressionThreshold = compressionThreshold;
             unsafe.sendPacket( new SetCompression( compressionThreshold ) );

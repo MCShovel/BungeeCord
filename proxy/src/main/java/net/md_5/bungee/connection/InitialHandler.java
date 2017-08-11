@@ -4,6 +4,7 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
@@ -91,6 +92,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     private boolean onlineMode = BungeeCord.getInstance().config.isOnlineMode();
     @Getter
     private InetSocketAddress virtualHost;
+    private String name;
     @Getter
     private UUID uniqueId;
     @Getter
@@ -140,8 +142,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     public void handle(LegacyHandshake legacyHandshake) throws Exception
     {
         this.legacy = true;
-        ch.getHandle().writeAndFlush( bungee.getTranslation( "outdated_client" ) );
-        ch.close();
+        ch.close( bungee.getTranslation( "outdated_client" ) );
     }
 
     @Override
@@ -183,8 +184,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
                             + '\u00a7' + legacy.getPlayers().getMax();
                 }
 
-                ch.getHandle().writeAndFlush( kickMessage );
-                ch.close();
+                ch.close( kickMessage );
             }
         };
 
@@ -405,7 +405,8 @@ public class InitialHandler extends PacketHandler implements PendingConnection
         }
         String encodedHash = URLEncoder.encode( new BigInteger( sha.digest() ).toString( 16 ), "UTF-8" );
 
-        String authURL = "https://sessionserver.mojang.com/session/minecraft/hasJoined?username=" + encName + "&serverId=" + encodedHash;
+        String preventProxy = ( ( BungeeCord.getInstance().config.isPreventProxyConnections() ) ? "&ip=" + URLEncoder.encode( getAddress().getAddress().getHostAddress(), "UTF-8" ) : "" );
+        String authURL = "https://sessionserver.mojang.com/session/minecraft/hasJoined?username=" + encName + "&serverId=" + encodedHash + preventProxy;
 
         Callback<String> handler = new Callback<String>()
         {
@@ -415,14 +416,15 @@ public class InitialHandler extends PacketHandler implements PendingConnection
                 if ( error == null )
                 {
                     LoginResult obj = BungeeCord.getInstance().gson.fromJson( result, LoginResult.class );
-                    if ( obj != null )
+                    if ( obj != null && obj.getId() != null )
                     {
                         loginProfile = obj;
+                        name = obj.getName();
                         uniqueId = Util.getUUID( obj.getId() );
                         finish();
                         return;
                     }
-                    disconnect( "Not authenticated with Minecraft.net" );
+                    disconnect( bungee.getTranslation( "offline_mode_player" ) );
                 } else
                 {
                     disconnect( bungee.getTranslation( "mojang_fail" ) );
@@ -492,7 +494,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
                     @Override
                     public void run()
                     {
-                        if ( ch.getHandle().isActive() )
+                        if ( !ch.isClosing() )
                         {
                             UserConnection userCon = new UserConnection( bungee, ch, getName(), InitialHandler.this );
                             userCon.setCompressionThreshold( BungeeCord.getInstance().config.getCompressionThreshold() );
@@ -538,18 +540,13 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     @Override
     public void disconnect(final BaseComponent... reason)
     {
-        ch.delayedClose( new Runnable()
+        if ( thisState != State.STATUS && thisState != State.PING )
         {
-
-            @Override
-            public void run()
-            {
-                if ( thisState != State.STATUS && thisState != State.PING )
-                {
-                    unsafe().sendPacket( new Kick( ComponentSerializer.toString( reason ) ) );
-                }
-            }
-        } );
+            ch.delayedClose( new Kick( ComponentSerializer.toString( reason ) ) );
+        } else
+        {
+            ch.close();
+        }
     }
 
     @Override
@@ -564,7 +561,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     @Override
     public String getName()
     {
-        return ( loginRequest == null ) ? null : loginRequest.getData();
+        return ( name != null ) ? name : ( loginRequest == null ) ? null : loginRequest.getData();
     }
 
     @Override
@@ -576,7 +573,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     @Override
     public InetSocketAddress getAddress()
     {
-        return (InetSocketAddress) ch.getHandle().remoteAddress();
+        return ch.getRemoteAddress();
     }
 
     @Override

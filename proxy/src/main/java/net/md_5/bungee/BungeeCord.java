@@ -125,6 +125,7 @@ public class BungeeCord extends ProxyServer
     private final Map<String, UserConnection> connections = new CaseInsensitiveMap<>();
     // Used to help with packet rewriting
     private final Map<UUID, UserConnection> connectionsByOfflineUUID = new HashMap<>();
+    private final Map<UUID, UserConnection> connectionsByUUID = new HashMap<>();
     private final ReadWriteLock connectionLock = new ReentrantReadWriteLock();
     /**
      * Plugin manager.
@@ -220,17 +221,17 @@ public class BungeeCord extends ProxyServer
         {
             if ( EncryptionUtil.nativeFactory.load() )
             {
-                logger.info( "Using OpenSSL based native cipher." );
+                logger.info( "Using mbed TLS based native cipher." );
             } else
             {
-                logger.info( "Using standard Java JCE cipher. To enable the OpenSSL based native cipher, please make sure you are using 64 bit Ubuntu or Debian with libssl installed." );
+                logger.info( "Using standard Java JCE cipher." );
             }
             if ( CompressFactory.zlib.load() )
             {
-                logger.info( "Using native code compressor" );
+                logger.info( "Using zlib based native compressor." );
             } else
             {
-                logger.info( "Using standard Java compressor. To enable zero copy compression, run on 64 bit Linux" );
+                logger.info( "Using standard Java compressor." );
             }
         }
     }
@@ -296,6 +297,11 @@ public class BungeeCord extends ProxyServer
     {
         for ( final ListenerInfo info : config.getListeners() )
         {
+            if ( info.isProxyProtocol() )
+            {
+                getLogger().log( Level.WARNING, "Using PROXY protocol for listener {0}, please ensure this listener is adequately firewalled.", info.getHost() );
+            }
+
             ChannelFutureListener listener = new ChannelFutureListener()
             {
                 @Override
@@ -392,11 +398,9 @@ public class BungeeCord extends ProxyServer
                     connectionLock.readLock().unlock();
                 }
 
-                getLogger().info( "Closing IO threads" );
-                eventLoops.shutdownGracefully();
                 try
                 {
-                    eventLoops.awaitTermination( Long.MAX_VALUE, TimeUnit.NANOSECONDS );
+                    Thread.sleep( 500 );
                 } catch ( InterruptedException ex )
                 {
                 }
@@ -427,6 +431,15 @@ public class BungeeCord extends ProxyServer
                     }
                     getScheduler().cancel( plugin );
                     plugin.getExecutorService().shutdownNow();
+                }
+
+                getLogger().info( "Closing IO threads" );
+                eventLoops.shutdownGracefully();
+                try
+                {
+                    eventLoops.awaitTermination( Long.MAX_VALUE, TimeUnit.NANOSECONDS );
+                } catch ( InterruptedException ex )
+                {
                 }
 
                 getLogger().info( "Thank you and goodbye" );
@@ -536,15 +549,7 @@ public class BungeeCord extends ProxyServer
         connectionLock.readLock().lock();
         try
         {
-            for ( ProxiedPlayer proxiedPlayer : connections.values() )
-            {
-                if ( proxiedPlayer.getUniqueId().equals( uuid ) )
-                {
-                    return proxiedPlayer;
-                }
-            }
-
-            return null;
+            return connectionsByUUID.get( uuid );
         } finally
         {
             connectionLock.readLock().unlock();
@@ -598,7 +603,7 @@ public class BungeeCord extends ProxyServer
     @Override
     public String getGameVersion()
     {
-        return Joiner.on( ", " ).join( ProtocolConstants.SUPPORTED_VERSIONS );
+        return ProtocolConstants.SUPPORTED_VERSIONS.get( 0 ) + "-" + ProtocolConstants.SUPPORTED_VERSIONS.get( ProtocolConstants.SUPPORTED_VERSIONS.size() - 1 );
     }
 
     @Override
@@ -639,6 +644,7 @@ public class BungeeCord extends ProxyServer
         try
         {
             connections.put( con.getName(), con );
+            connectionsByUUID.put( con.getUniqueId(), con );
             connectionsByOfflineUUID.put( con.getPendingConnection().getOfflineId(), con );
         } finally
         {
@@ -655,6 +661,7 @@ public class BungeeCord extends ProxyServer
             if ( connections.get( con.getName() ) == con )
             {
                 connections.remove( con.getName() );
+                connectionsByUUID.remove( con.getUniqueId() );
                 connectionsByOfflineUUID.remove( con.getPendingConnection().getOfflineId() );
             }
         } finally
